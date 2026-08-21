@@ -1,0 +1,17 @@
+{
+  "name": "cnpj-buscador-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "libphonenumber-js": "^1.11.9",
+    "pg": "^8.12.0"
+  }
+}
