@@ -1,0 +1,87 @@
+/* ------------------------------------------------------------------------
+   Design tokens. Two palettes selected via [data-theme] on <html>.
+   Everything else in the app reads these variables — no hardcoded colors.
+   ------------------------------------------------------------------------ */
+
+:root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --sidebar-w: 248px;
+}
+
+[data-theme='dark'] {
+  --bg: #0a0a0a;
+  --bg-elevated: #111113;
+  --surface: #141416;
+  --surface-hover: #1c1c1f;
+  --border: #262629;
+  --border-strong: #34343a;
+
+  --text: #f5f5f6;
+  --text-dim: #9a9aa2;
+  --text-faint: #6b6b73;
+
+  --accent: #f5f5f6;
+  --accent-text: #0a0a0a;
+  --accent-hover: #ffffff;
+
+  --danger: #f36262;
+  --success: #4ade80;
+
+  --overlay: rgba(0, 0, 0, 0.6);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='light'] {
+  --bg: #f7f7f8;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-hover: #f2f2f3;
+  --border: #e6e6e8;
+  --border-strong: #d4d4d8;
+
+  --text: #17171a;
+  --text-dim: #6c6c74;
+  --text-faint: #9a9aa2;
+
+  --accent: #17171a;
+  --accent-text: #ffffff;
+  --accent-hover: #000000;
+
+  --danger: #d64545;
+  --success: #16a34a;
+
+  --overlay: rgba(0, 0, 0, 0.35);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}

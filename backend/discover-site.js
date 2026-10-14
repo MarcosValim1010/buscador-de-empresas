@@ -37,6 +37,12 @@ const PG_LATENCY_ALERT_MS = 500;
 const HTTP_TIMEOUT_MS = 8000;
 const SITUACAO_ATIVA = '02'; // confirmado em produção: 28.148.920 linhas
 
+// Fila vazia por falta de trabalho (não por erro) é esperado e recorrente
+// enquanto o seed-enrichment ainda está rodando — em vez de encerrar e
+// depender de reinício manual, dorme e checa de novo. --no-autorestart e o
+// circuit breaker de latência continuam protegendo contra falha real.
+const EMPTY_QUEUE_SLEEP_MS = parseInt(process.env.DISCOVER_EMPTY_QUEUE_SLEEP_MS || String(30 * 60 * 1000), 10);
+
 // Teto de segurança pra rodadas de teste em amostra maior: o processo se
 // encerra sozinho ao atingir esse número de empresas processadas, em vez de
 // continuar até a base toda (0/ausente = sem teto, roda até terminar).
@@ -384,8 +390,9 @@ async function run() {
     );
 
     if (fila.rows.length === 0) {
-      console.log('Fila de prioridade 1 vazia (nenhuma empresa pendente). Concluído.');
-      break;
+      console.log(`Fila de prioridade 1 vazia por enquanto — dormindo ${EMPTY_QUEUE_SLEEP_MS / 60000}min antes de checar de novo (seed-enrichment pode alimentar mais).`);
+      await sleep(EMPTY_QUEUE_SLEEP_MS);
+      continue;
     }
 
     // Segunda query, só pros detalhes (razão social/nome fantasia) do lote

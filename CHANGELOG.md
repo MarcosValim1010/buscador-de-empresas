@@ -1,5 +1,144 @@
 # Changelog
 
+## 2026-09-04 — Correção de mojibake nos dados da Receita Federal (backfill)
+
+### O que aconteceu
+Textos importados da Receita Federal apareciam corrompidos (mojibake
+clássico UTF-8 lido como Latin-1): "ServiÃ§os advocatÃ­cios" em vez de
+"Serviços advocatícios". Diagnóstico confirmou que [cnpj_importer.py](../cnpj_importer.py)
+**já está correto** (declara `ENCODING 'LATIN1'` no `COPY`, hash idêntico
+entre repo e servidor) — o dado corrompido vinha de um import anterior a
+essa versão do script e nunca tinha sido corrigido na origem, só (segundo
+relato) mascarado visualmente em algum momento. Não foi encontrado nenhum
+remendo client-side no frontend atual para remover.
+
+### Diagnóstico
+Confirmado via túnel de produção com hex dump (não só comparação visual —
+terminal/IPC podem re-corromper a exibição de texto acentuado sem que o
+dado real esteja errado). Corrupção de **uma única rodada** (Latin-1 lido
+como UTF-8), reversível com `convert_from(convert_to(col, 'LATIN1'), 'UTF8')`.
+
+Detecção usada: regex `[ÃÂ][\x80-\xBF]` em vez de `col ~ 'Ã'` puro — "Ã"/"Â"
+sozinhos são letras portuguesas legítimas (ex: "ALEMÃ", "IRMÃ"); o marcador
+real de mojibake é "Ã"/"Â" **seguido** de um caractere de controle/símbolo no
+intervalo U+0080–U+00BF (o byte de continuação UTF-8 reinterpretado como
+Latin-1), que não ocorre em português normal.
+
+### Tabelas afetadas e linhas corrigidas
+| Tabela.coluna | Linhas |
+|---|---:|
+| raw_cnaes.descricao | 1.214 |
+| raw_naturezas.descricao | 70 |
+| raw_qualificacoes.descricao | 45 |
+| raw_paises.descricao | 11 |
+| raw_empresas.razao_social | 4.720 |
+| raw_estabelecimentos.nome_fantasia | 1.128 |
+| raw_estabelecimentos.logradouro | 288.551 |
+| raw_estabelecimentos.bairro | 550.087 |
+| raw_estabelecimentos.complemento | 19.464 (19.462 + 2 residuais, ver abaixo) |
+| raw_socios.nome_socio_razao_social | 19 |
+| raw_municipios, raw_motivos, raw_socios.nome_representante | 0 (já limpas) |
+
+### Execução seguindo o padrão do incidente de I/O anterior
+Script criado: [scripts/fix-mojibake-encoding.js](../scripts/fix-mojibake-encoding.js).
+Tabelas pequenas corrigidas de uma vez (poucas linhas). Tabelas grandes
+(raw_empresas, raw_estabelecimentos, raw_socios) corrigidas **em uma única
+passada** por faixas de `ctid` de bloco físico (~5.000 páginas / ~40MB por
+lote, não `LIMIT` repetido — repetir "`WHERE col ~ regex LIMIT N`" a cada
+lote reescanearia a tabela do início toda vez em colunas com centenas de
+milhares de linhas espalhadas, como `bairro`/`logradouro`). `max_parallel_workers_per_gather=0`
+no pool (Postgres em Docker com 64MB de shm, mesma causa do crash
+documentado em 2026-08-18/19). Site permaneceu no ar e responsivo (<500ms)
+durante toda a execução; nenhuma degradação de I/O observada.
+
+**Lição:** batch por `ctid` física é seguro para I/O, mas numa tabela com
+escrita concorrente (o worker `enrich-contato` roda em paralelo mexendo em
+outras colunas de `raw_estabelecimentos`) uma linha pode ganhar um `ctid`
+novo via MVCC durante o scan e "fugir" da faixa já varrida — 2 linhas de
+`complemento` ficaram de fora da primeira passada por esse motivo, achadas
+por um `COUNT` de verificação pós-execução e corrigidas em seguida (correção
+trivial, sem batching). O script agora roda automaticamente esse passe de
+verificação/residual ao final de cada coluna grande.
+
+## 2026-08-24 — Sprint C1/C2: fontes de compliance (CEIS/CNEP/CEAF)
+
+### Decisão: mascarar CPF sempre, inclusive dentro do payload bruto
+
+**Achado (Sprint C1):** a API do Portal da Transparência retorna, em
+CEIS/CNEP, o campo `sancionado.codigoFormatado` com o **CPF completo, sem
+máscara**, mesmo quando o campo irmão `pessoa.cpfFormatado` do mesmo registro
+vem mascarado. Ou seja, o payload bruto de um mesmo registro contém as duas
+versões.
+
+**Decisão:** aplicar máscara (`***.XXX.XXX-**`, mesmo padrão de
+`raw_socios`) em **qualquer CPF encontrado em qualquer campo**, antes de
+gravar qualquer coisa no banco — inclusive dentro de `detalhe_original`
+(JSONB do payload bruto, não só nos campos normalizados). Função implementada
+em [scripts/compliance/utils.js](scripts/compliance/utils.js)
+(`sanitizarPayload`), percorre recursivamente o JSON aplicando a máscara em
+todo valor string. Testada e confirmada: um registro de teste com
+`sancionado.codigoFormatado` originalmente sem máscara foi gravado já
+mascarado em `detalhe_original`.
+
+**Justificativa:** princípio de minimização de dado (LGPD) — nossa base
+(`raw_socios`) só guarda CPF mascarado, então reter o CPF completo de uma
+fonte externa não aumenta a precisão do matching, só aumenta a retenção de
+dado sensível sem necessidade real.
+
+### Decisão: TCU Licitantes Inidôneos não automatizado
+
+**Achado (Sprint C1):** a listagem real de licitantes inidôneos (por trás de
+`certidoes.apps.tcu.gov.br`) exige um `codigoVerificacao` de CAPTCHA mesmo
+pra paginar a lista geral — não é um dado aberto sem barreira como se
+supunha inicialmente.
+
+**Decisão:** não contornar essa proteção. TCU_INIDONEOS **fora do escopo**
+da ingestão automatizada (Sprint C2 cobre só CEIS/CNEP/CEAF, via API oficial
+com chave). Fonte não coberta — requer processo manual ou contato
+institucional futuro caso se torne necessária.
+
+### Sprint C2 — teste pequeno de ingestão
+
+`scripts/compliance/ingest-fontes.js` rodado em modo teste (2 páginas por
+fonte, não a base completa): **63 registros** inseridos em
+`compliance_fontes_raw` (30 CEIS, 3 CNEP, 30 CEAF), sanitização de CPF
+confirmada na amostra revisada. Aguardando autorização pra ingestão completa.
+
+## 2026-08-24 — Sprint 4: fim da 1ª passada de prioridade 1 + fila persistente
+
+### 1ª passada de prioridade 1 concluída
+
+`discover-site.js` esvaziou a fila de prioridade 1 e encerrou sozinho (comportamento
+antigo — ver mudança abaixo). Resultado final:
+
+- **481.271 empresas processadas**
+- Tempo total: 146.335s (~40,6h) → **3,29 empresas/s** (bate com a calibração de 5 req/s)
+- **26.820 sites encontrados (5,6%)**
+- **10.448 confirmados por conteúdo (2,2% do total, 39,0% dos encontrados)**
+- 69.014 tentativas HTTP, 4.199 timeouts (6,1%), 11.883 outros erros, 601 domínios bloqueados por robots.txt
+
+Amostra de 30 registros `site_confirmado=true` revisada manualmente — sem sinal de
+falso positivo, padrão consistente com os testes menores anteriores.
+
+### Backlog acumulado + fila deixa de precisar de reinício manual
+
+Como o `seed-enrichment` continuou rodando durante a 1ª passada (e durante uma
+pausa de ~15h sem monitoramento), o backlog de prioridade 1 pendente cresceu
+pra **115.998** antes do reinício.
+
+Mudança de comportamento em `discover-site.js`: antes, fila vazia (sem mais
+candidatos pendentes) encerrava o processo, exigindo reinício manual sempre
+que o seed alimentava mais prioridade 1. Agora o script **dorme por 30min
+(`DISCOVER_EMPTY_QUEUE_SLEEP_MS`) e checa de novo** em vez de encerrar,
+retomando sozinho quando o seed inserir novos candidatos — sem precisar de
+intervenção manual pra cada novo lote de prioridade 1 que aparecer.
+`--no-autorestart` e o circuit breaker de latência do Postgres continuam
+ativos, protegendo contra falha real (essa mudança só afeta o caso "fila
+vazia por falta de trabalho", não erro).
+
+Processo reiniciado com a mudança em 2026-08-24, consumindo o backlog de
+115.998 pendentes.
+
 ## 2026-08-20 — Sprint 4: restrição a prioridade 1 + calibração de taxa
 
 ### Restrição do universo-alvo: só prioridade 1

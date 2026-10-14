@@ -14,7 +14,7 @@ Uso:
     export PGPORT=5432
     export PGDATABASE=cnpj
     export PGUSER=postgres
-    export PGPASSWORD=8ehjlkNjDQOkr9wpuU9YfkBZOvE0T5TD4CT8FKubUmfTqaMX8JP8CBUcyPBPuKjL
+    export PGPASSWORD=sua_senha_aqui
 
     python cnpj_importer.py                # baixa tudo (mês mais recente)
     python cnpj_importer.py --only Empresas Socios

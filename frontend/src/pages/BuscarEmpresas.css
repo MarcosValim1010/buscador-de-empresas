@@ -1,0 +1,260 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+select {
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  width: 100%;
+  font-family: inherit;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--text-dim);
+}
+
+.typeahead-wrap {
+  position: relative;
+}
+
+.typeahead-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 20;
+  list-style: none;
+  padding: 4px;
+  box-shadow: var(--shadow);
+}
+
+.typeahead-list li {
+  padding: 7px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.typeahead-list li:hover {
+  background: var(--surface-hover);
+}
+
+.opt-codigo {
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  margin-right: 6px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.chip button {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.checkbox-item input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.hint-erro {
+  color: var(--danger);
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px 20px;
+  padding: 18px 20px;
+}
+
+.filters-grid-span2,
+.filters-grid-span3 {
+  grid-column: 1 / -1;
+}
+
+.checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+}
+
+.filters-erro {
+  padding: 0 20px 14px;
+}
+
+.filters-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.filters-footer-left,
+.filters-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.results-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.results-card-header {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.results-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.results-card-title h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.results-card-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.results-range {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.table-wrap {
+  overflow: auto;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  text-align: left;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 48px !important;
+  white-space: normal !important;
+}
+
+@media (max-width: 1180px) {
+  .filters-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .checkbox-row {
+    flex-direction: column;
+    gap: 9px;
+  }
+}
